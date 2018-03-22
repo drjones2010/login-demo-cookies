@@ -31,7 +31,7 @@ Go to localhost:
 
 #### Log in
 1. User logs in with username and password;
-2. The server looks in the database for the username that match with the hashed password;
+2. The server looks in the database for the username that matches with the hashed password;
 3. If found, the server generates a uuid4 token and saves it on a signed cookie on the client;
 4. The server redirects the user to the secret page.
 
@@ -50,5 +50,5 @@ Go to localhost:
 
 #### Log out
 1. User clicks on logout link, on secret page;
-2. The server delete the user's token from the sessions table;
+2. The server deletes the user's token from the sessions table;
 3. The server redirects the user to the login page.
