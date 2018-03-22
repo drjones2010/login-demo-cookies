@@ -5,7 +5,7 @@ Authentication using Express and SQLite3 (with sequelize).
 ----------------
 ### Why and what
 
-This project has been made to demonstrate a way to implement an auth system using the best practices without too much third party packages.
+This project has been made to demonstrate a way to implement an auth system using the best practices without too many third party packages.
 
 It uses <code>express</code> as webserver, <code>bcrypt</code> for password hashing, <code>sqlite3</code> for the persistence and <code>sequelize</code> as orm.
 
