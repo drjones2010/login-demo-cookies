@@ -70,7 +70,7 @@ module.exports = {
 
 	createDatabase: function(){
 		return connection.sync({
-			force: true //Overwrites the tables
+			force: false //Overwrites the tables
 		}).then(() => {
 			setInterval(function(){
 				Session.findAll({where: {expiration: {[Sequelize.Op.lt]: Date.now()}}})

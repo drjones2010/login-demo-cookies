@@ -29,7 +29,7 @@ app.post("/login", (req, res) => {
 	.then(session => {
 		if (session.token != null){
 			DbApi.addUserSession(session.token, res);
-			res.redirect("/users/" + session.username);
+			res.redirect("/secret");
 		} else {
 			res.redirect("/login");
 		}
@@ -48,34 +48,33 @@ app.post("/signup", (req, res) => {
 	.then(session => {
 		if (session.token != null){
 			DbApi.addUserSession(session.token, res);
-			res.redirect("/users/" + req.body.username);
+			res.redirect("/secret");
 		} else {
 			res.redirect("/login");
 		}
 	})
 });
 
-app.get("/users/:username", (req, res) => {
-	if (!req.signedCookies.session){
-	 	res.render("login");
-	} else {
-		return DbApi.retrieveSessionByToken(req.signedCookies.session)
-		.then(session => {
-			if (!session)
-				throw(1);
-			res.render("user", {username: session.username})
-		}).catch(err => {
-			switch (err) {
-				case 1:
-					console.log("Session not found");
-					res.redirect("/login");
-					break;
-				default:
-					console.log(err);
-			}
-		});
-	}
+app.get("/secret", isAuthenticated, (req, res) => {
+	res.render("user", {username: req.username})
 });
+
+function isAuthenticated(req, res, next){
+    if(req.signedCookies.session){
+		DbApi.retrieveSessionByToken(req.signedCookies.session)
+		.then(session => {
+			if (!session){
+				res.redirect("/login");
+			}
+			req.username = session.username;
+			return next();
+		}).catch(err => {
+			console.log(err);
+		});
+    } else {
+		res.redirect("/login");
+	}
+}
 
 app.get('/logout', (req, res) => {
     var token = req.signedCookies.session;
@@ -93,6 +92,8 @@ app.get('/logout', (req, res) => {
 });
 
 app.listen(3000, () => {
-    console.log("Server has started");
+    console.log("Server has started on http://127.0.0.1:3000");
 })
+
+
 
