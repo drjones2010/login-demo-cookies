@@ -25,16 +25,20 @@ app.get("/login", (req, res) => {
 
 app.post("/login", (req, res) => {
 
-	DbApi.login(req.body.username, req.body.password)
+	DbApi.login(req.body.username, req.body.password, cookieAge)
 	.then(session => {
-		if (session.token != null){
-			DbApi.addUserSession(session.token, res);
+		if (session != null){
+			addUserSession(session.token, res);
 			res.redirect("/secret");
 		} else {
-			res.redirect("/login");
+			res.status(403);
+			res.render("login", {error: "Wrong username or password."});
 		}
 	}).catch(err => {
-		res.redirect("/login");
+		console.log(err);
+				
+		res.status(401);
+		res.render("login", {error: "There was an error. Please try again in a few moments."});
 	});
 
 });
@@ -44,20 +48,40 @@ app.get("/signup", (req, res) => {
 });
 
 app.post("/signup", (req, res) => {
-	DbApi.registerUser(req.body.username, req.body.password)
+	DbApi.registerUser(req.body.username, req.body.password, cookieAge)
 	.then(session => {
-		if (session.token != null){
-			DbApi.addUserSession(session.token, res);
+			addUserSession(session.token, res);
 			res.redirect("/secret");
-		} else {
-			res.redirect("/login");
-		}
-	})
+	}).catch(DbApi.DuplicateKeyError, err => {
+		res.status(409);
+		res.render("signup", {error: "Username already taken"});	
+	}).catch(err => {
+		console.log(err);
+	});
 });
 
 app.get("/secret", isAuthenticated, (req, res) => {
 	res.render("user", {username: req.username})
 });
+
+app.get('/logout', (req, res) => {
+    var token = req.signedCookies.session;
+
+	DbApi.logout(token)
+	.then(result => {
+		if (result){
+			removeUserSession(res);
+		} else {
+			console.log('Session not found. Redirect to /login');
+		}
+		res.redirect('/login');
+	});
+
+});
+
+app.listen(3000, () => {
+    console.log("Server has started on http://127.0.0.1:3000");
+})
 
 function isAuthenticated(req, res, next){
     if(req.signedCookies.session){
@@ -72,28 +96,24 @@ function isAuthenticated(req, res, next){
 			console.log(err);
 		});
     } else {
-		res.redirect("/login");
+		res.status(401)
+		res.render("login");
 	}
 }
 
-app.get('/logout', (req, res) => {
-    var token = req.signedCookies.session;
+var cookieAge = 604800000; //1week
 
-	DbApi.logout(token)
-	.then(result => {
-		if (result){
-			DbApi.removeUserSession(res);
-		  	res.redirect('/login');
-		} else {
-			console.log('Unable to logout');
-		}
-	});
+function addUserSession (token, res){
+	res.cookie("session", token, {
+		httpOnly: true,
+		maxAge: cookieAge,
+		signed: true,
+		// secure: true	//put it to true if behind https
+	})
+}
 
-});
-
-app.listen(3000, () => {
-    console.log("Server has started on http://127.0.0.1:3000");
-})
-
+function removeUserSession (res){
+	res.clearCookie("session");
+}
 
 

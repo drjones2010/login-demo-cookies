@@ -11,6 +11,11 @@
 			<input type="password" placeholder="Password" name="password"/>
 			<button>Login</button>
 		</form>
-
+		<% if (typeof error != "undefined" && error) { %>
+			<p><%= error %></p>
+		<% } %>
+		<p>
+		<a href="/signup">Sign up</a> - <a href="/secret">My page</a>
+	</p>
 	</body>
 </html>

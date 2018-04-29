@@ -2,7 +2,6 @@ var Sequelize = require("sequelize");
 var bcrypt = require("bcrypt");
 
 var saltRounds = 10;
-var cookieAge = 604800000; //1week
 var cleanUpInterval = 1000 * 60 * 60 * 24 //24hour
 
 //Create db connection object
@@ -59,15 +58,26 @@ const Session = connection.define('sessions', {
     	primaryKey: true
   	},
 
-	expiration: {
-		type: Sequelize.INTEGER,
-		defaultValue: Date.now()+cookieAge
-	}
+	expiration: Sequelize.INTEGER
 
+}, {
+    timestamps: false
 });
+
+class DuplicateKeyError extends Error{}
+
+function cryptPassword(password) {
+    return new Promise(function(resolve, reject) {
+        bcrypt.hash(password, saltRounds, function(err, hash) {
+			if (err) reject(err);
+            else resolve(hash);
+        });
+    })
+};
 
 module.exports = {
 
+	
 	createDatabase: function(){
 		return connection.sync({
 			force: false //Overwrites the tables
@@ -80,42 +90,35 @@ module.exports = {
 		})
 	},
 
-	registerUser: function (user, pass){
+	registerUser: function (user, pass, cookieAge){
 		return connection.transaction(t => {
 			return this.createUser(user, pass, {transaction: t})
 			.then(userRow => {
-				return this.createSession(user, {transaction: t});
-			}).catch(err => {
-				console.log(err);
-			})
+				return this.createSession(user, cookieAge, {transaction: t});
+			}).catch(Sequelize.UniqueConstraintError, err =>{
+				throw new this.DuplicateKeyError();
+			});
 		})
 	},
 
 	createUser: function (user, pass, options){
-
-		return User.create({username: user, password: pass}, options)
-		.catch(Sequelize.UniqueConstraintError, err =>{
-			console.log("	ERR> Username taken");
-		}).catch(err =>{
-			console.log(err);
-		});
+		return User.create({username: user, password: pass}, options);
 	},
 
-	createSession: function (user, options){
-		return Session.create({username: user, expiration: cookieAge}, options)
-		.catch(Sequelize.UniqueConstraintError, err =>{
-			console.log("	ERR> User already logged in");
-		}).catch(err =>{
-			console.log(err);
-		});
+	createSession: function (user, cookieAge, options){
+		return Session.create({username: user, expiration: Date.now()+cookieAge}, options);
 	},
 
 	retrieveUser: function (user, password){
 		return User.findOne({where: {username: user}})
 		.then(user => {
-			if (!user || !user.checkPassword(password))
-				throw(new Error());
-			else return user;
+			if (!user)
+				return null;
+				
+			return user.checkPassword(password).then(result => {
+				if (result) return user;
+				else return null;
+			})
 		});
 	},
 
@@ -138,12 +141,10 @@ module.exports = {
 		return Session.destroy({where: {token: token}})
 	},
 
-	login: function (user, pass){
+	login: function (user, pass, cookieAge){
 		return this.retrieveUser(user, pass)
 		.then(user => {
-			return this.createSession(user.username);
-		}).catch(err => {
-			console.log("ERR> Access denied.")
+			return (user ? this.createSession(user.username, cookieAge) : null)
 		});
 	},
 
@@ -160,34 +161,10 @@ module.exports = {
 		})
 	},
 
-	hasValidToken: function (token){
-		return this.retrieveSessionByToken(token)
-		.then(session => {
-			return session!=null;
-		}).catch(err => {
-			console.log(err);
-		});
-	},
-
-	addUserSession: function (token, res){
-		res.cookie("session", token, {
-			httpOnly: true,
-			maxAge: cookieAge,
-			signed: true,
-			// secure: true	//put it to true if behind https
-		})
-	},
-
-	removeUserSession: function (res){
-		res.clearCookie("session");
-	}
+	DuplicateKeyError: DuplicateKeyError
 }
 
-function cryptPassword(password) {
-    return new Promise(function(resolve, reject) {
-        bcrypt.hash(password, saltRounds, function(err, hash) {
-			if (err) reject(err);
-            else resolve(hash);
-        });
-    })
-};
+
+
+
+
