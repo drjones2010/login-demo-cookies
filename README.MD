@@ -3,9 +3,11 @@
 Authentication using Express and SQLite3 (with sequelize).
 
 ----------------
-### Why and what
+### The project
 
-This project has been made to demonstrate a way to implement an auth system using the best practices without too many third party packages.
+This project demonstrates a way to implement an auth system using the best practices without too many third party packages.
+
+The auth system can log in, sign up and log out a User. The password is hashed before being saved on the database. Every time the user logs in, a session token is stored both in the database and in a signed browser cookie, so that it won't need to log in again to access the private page and can log in from different devices. Every 24 hours the backend searches and deletes expired tokens.  
 
 It uses <code>express</code> as webserver, <code>bcrypt</code> for password hashing, <code>sqlite3</code> for the persistence and <code>sequelize</code> as orm.
 
